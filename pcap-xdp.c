@@ -674,13 +674,16 @@ pcap_xdp_activate(pcap_t *p)
 		switch (-ret) {
 
 		case EPERM:
-		case ENOBUFS:
-			/*
-			 * Registration charges RLIMIT_MEMLOCK, so this
-			 * fails on a default ulimit even with all caps.
-			 */
+			/* libxdp opens the AF_XDP socket in here. */
 			snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
-			    "xdp: cannot register %zu-byte umem - CAP_NET_RAW or a higher RLIMIT_MEMLOCK (ulimit -l) may be required",
+			    "xdp: cannot create AF_XDP socket - CAP_NET_RAW may be required");
+			ret = PCAP_ERROR_PERM_DENIED;
+			break;
+
+		case ENOBUFS:
+			/* Registration charges RLIMIT_MEMLOCK. */
+			snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
+			    "xdp: cannot register %zu-byte umem - a higher RLIMIT_MEMLOCK (ulimit -l) may be required",
 			    px->umem_size);
 			ret = PCAP_ERROR_PERM_DENIED;
 			break;
