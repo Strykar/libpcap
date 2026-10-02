@@ -739,7 +739,7 @@ pcap_xdp_activate(pcap_t *p)
 
 		case EPERM:
 			snprintf(p->errbuf, PCAP_ERRBUF_SIZE,
-			    "xdp: binding to %s queue %u failed - CAP_NET_RAW, CAP_NET_ADMIN and CAP_BPF may be required",
+			    "xdp: binding to %s queue %u failed - CAP_NET_RAW, CAP_NET_ADMIN and CAP_SYS_ADMIN may be required",
 			    px->ifname, px->queue_id);
 			ret = PCAP_ERROR_PERM_DENIED;
 			break;
