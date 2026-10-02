@@ -545,6 +545,8 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     option(ENABLE_DAG_TX "Enable Endace DAG transmit support" OFF)
 
     option(DISABLE_SNF "Disable Myricom SNF support" OFF)
+
+    option(DISABLE_XDP "Disable AF_XDP capture support" OFF)
 else()
     set(DISABLE_RDMA ON)
 
@@ -552,6 +554,8 @@ else()
     set(ENABLE_DAG_TX OFF)
 
     set(DISABLE_SNF ON)
+
+    set(DISABLE_XDP ON)
 endif()
 
 #
@@ -2639,6 +2643,55 @@ if(NOT DISABLE_RDMA)
         cmake_pop_check_state()
     endif(LIBIBVERBS_FOUND)
 endif(NOT DISABLE_RDMA)
+
+# Check for AF_XDP capture support.
+if(NOT DISABLE_XDP)
+    #
+    # AF_XDP capture requires both libxdp and libbpf; we only look
+    # for them with pkg-config, as both have provided .pc files
+    # since libxdp existed.
+    #
+    pkg_check_modules(LIBXDP libxdp)
+    if(LIBXDP_FOUND)
+        pkg_check_modules(LIBBPF libbpf)
+    endif()
+    if(LIBXDP_FOUND AND LIBBPF_FOUND)
+        #
+        # We call xsk_socket__create(), so make sure this libxdp
+        # provides it (it lived in libbpf before libxdp 1.0).
+        #
+        cmake_push_check_state()
+        set(CMAKE_REQUIRED_INCLUDES ${LIBXDP_INCLUDE_DIRS} ${LIBBPF_INCLUDE_DIRS})
+        set(CMAKE_REQUIRED_LIBRARIES ${LIBXDP_LINK_LIBRARIES} ${LIBBPF_LINK_LIBRARIES})
+        check_function_exists(xsk_socket__create HAVE_XSK_SOCKET__CREATE)
+        cmake_pop_check_state()
+        if(HAVE_XSK_SOCKET__CREATE)
+            set(PCAP_SUPPORT_XDP TRUE)
+            set(PROJECT_SOURCE_LIST_C ${PROJECT_SOURCE_LIST_C} pcap-xdp.c)
+            include_directories(AFTER ${LIBXDP_INCLUDE_DIRS} ${LIBBPF_INCLUDE_DIRS})
+            set(PCAP_LINK_LIBRARIES ${PCAP_LINK_LIBRARIES} ${LIBXDP_LINK_LIBRARIES} ${LIBBPF_LINK_LIBRARIES})
+
+            #
+            # Get library information for libxdp and libbpf.
+            #
+            pkg_get_link_info(LIBXDP libxdp)
+            pkg_get_link_info(LIBBPF libbpf)
+            set(LIBS "${LIBS} ${LIBXDP_LIBS} ${LIBBPF_LIBS}")
+            set(LIBS_STATIC "${LIBS_STATIC} ${LIBXDP_LIBS_STATIC} ${LIBBPF_LIBS_STATIC}")
+            set(REQUIRES_PRIVATE "${REQUIRES_PRIVATE} ${LIBXDP_PACKAGE_NAME} ${LIBBPF_PACKAGE_NAME}")
+
+            #
+            # Same as in Autoconf.
+            #
+            message(STATUS "building with AF_XDP")
+        else()
+            #
+            # Same as in Autoconf.
+            #
+            message(STATUS "building without AF_XDP (present, but cannot be used)")
+        endif()
+    endif()
+endif()
 
 #
 # Check for sniffing capabilities using third-party APIs.

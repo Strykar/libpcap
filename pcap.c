@@ -123,6 +123,10 @@
 #include "pcap-rdmasniff.h"
 #endif
 
+#ifdef PCAP_SUPPORT_XDP
+#include "pcap-xdp.h"
+#endif
+
 #ifdef ENABLE_REMOTE
 #include "pcap-rpcap.h"
 #endif
@@ -655,6 +659,9 @@ static struct capture_source_type {
 #endif
 #ifdef PCAP_SUPPORT_RDMASNIFF
 	{ rdmasniff_findalldevs, rdmasniff_create },
+#endif
+#ifdef PCAP_SUPPORT_XDP
+	{ pcap_xdp_findalldevs, pcap_xdp_create },
 #endif
 	{ NULL, NULL }
 };
@@ -1569,6 +1576,9 @@ pcap_lookupnet(const char *device, bpf_u_int32 *netp, bpf_u_int32 *maskp,
 #ifdef PCAP_SUPPORT_NETMAP
 	    || strncmp(device, "netmap:", 7) == 0
 	    || strncmp(device, "vale", 4) == 0
+#endif
+#ifdef PCAP_SUPPORT_XDP
+	    || strncmp(device, "xdp:", 4) == 0
 #endif
 	    ) {
 		*netp = *maskp = 0;

@@ -244,6 +244,8 @@ You can get around this by installing GCC.
 	pcap-usb-linux-common.h - Linux USB common prototypes
 	pcap-util.c	    - common code for various files
 	pcap-util.h	    - common code for various files
+	pcap-xdp.c	    - AF_XDP capture support for Linux
+	pcap-xdp.h	    - AF_XDP capture support for Linux
 	pcap.3pcap	    - manual entry for the library
 	pcap.c		    - pcap utility routines
 	pcap.h		    - header for backwards compatibility

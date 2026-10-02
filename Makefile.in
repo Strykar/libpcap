@@ -321,6 +321,8 @@ EXTRA_DIST = \
 	pcap-snf.h \
 	pcap-usb-linux.c \
 	pcap-usb-linux.h \
+	pcap-xdp.c \
+	pcap-xdp.h \
 	rpcap-protocol.c \
 	rpcapd/CMakeLists.txt \
 	rpcapd/Makefile.in \

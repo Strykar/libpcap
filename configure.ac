@@ -2872,6 +2872,90 @@ if test "x$enable_rdma" != "xno"; then
 	AC_SUBST(PCAP_SUPPORT_RDMASNIFF)
 fi
 
+AC_ARG_ENABLE([xdp],
+[AS_HELP_STRING([--enable-xdp],[enable AF_XDP capture support @<:@default=yes, if support available@:>@])],
+    [],
+    [enable_xdp=ifavailable])
+
+if test "$xxx_only" = yes; then
+	# User requested something-else-only pcap, so they don't
+	# want AF_XDP support.
+	enable_xdp=no
+fi
+
+# Same as for RDMA above.
+if ! expr "$host_os" : linux >/dev/null; then
+	case "$enable_xdp" in
+	ifavailable)
+		enable_xdp=no
+		;;
+	yes)
+		AC_MSG_ERROR([cannot enable AF_XDP support (not Linux)])
+		;;
+	esac
+fi
+
+if test "x$enable_xdp" != "xno"; then
+	#
+	# AF_XDP capture requires both libxdp and libbpf; we only look
+	# for them with pkg-config, as both have provided .pc files
+	# since libxdp existed.
+	#
+	PKG_CHECK_MODULE(LIBXDP, libxdp,
+	    [
+		found_libxdp=yes
+	    ])
+
+	if test "x$found_libxdp" = "xyes"; then
+		PKG_CHECK_MODULE(LIBBPF, libbpf,
+		    [
+			found_libbpf=yes
+		    ])
+	fi
+
+	if test "x$found_libbpf" = "xyes"; then
+		#
+		# We call xsk_socket__create(), so make sure this libxdp
+		# provides it (it lived in libbpf before libxdp 1.0).
+		#
+		AC_LBL_SAVE_CHECK_STATE
+		CFLAGS="$CFLAGS $LIBXDP_CFLAGS $LIBBPF_CFLAGS"
+		LIBS="$LIBS $LIBXDP_LIBS $LIBBPF_LIBS"
+		AC_CHECK_FUNC(xsk_socket__create)
+		AC_LBL_RESTORE_CHECK_STATE
+	fi
+
+	if test "$ac_cv_func_xsk_socket__create" = yes; then
+		#
+		# We can build with AF_XDP.
+		#
+		AC_DEFINE(PCAP_SUPPORT_XDP, 1, [target host supports AF_XDP sockets])
+		MODULE_C_SRC="$MODULE_C_SRC pcap-xdp.c"
+		V_INCLS="$V_INCLS $LIBXDP_CFLAGS $LIBBPF_CFLAGS"
+		ADDITIONAL_LIBS="$ADDITIONAL_LIBS $LIBXDP_LIBS $LIBBPF_LIBS"
+		ADDITIONAL_LIBS_STATIC="$ADDITIONAL_LIBS_STATIC $LIBXDP_LIBS_STATIC $LIBBPF_LIBS_STATIC"
+		REQUIRES_PRIVATE="$REQUIRES_PRIVATE libxdp libbpf"
+		AC_MSG_NOTICE([building with AF_XDP])
+	else
+		#
+		# We didn't find a usable libxdp/libbpf.  If AF_XDP
+		# support was explicitly requested, fail; otherwise the
+		# pkg-config check output already said what happened.
+		#
+		if test "x$enable_xdp" = "xyes"; then
+			AC_MSG_ERROR(
+[AF_XDP support requested with --enable-xdp, but we couldn't find a
+usable libxdp and libbpf with pkg-config.  Make sure that pkg-config
+is installed, that libxdp 1.0 or later and libbpf are installed, and
+that they provide .pc files.])
+		fi
+		if test "x$found_libbpf" = "xyes"; then
+			AC_MSG_NOTICE([building without AF_XDP (present, but cannot be used)])
+		fi
+	fi
+	AC_SUBST(PCAP_SUPPORT_XDP)
+fi
+
 #
 # If this is a platform where we need to have the .pc file and
 # pcap-config script supply an rpath option to specify the directory
