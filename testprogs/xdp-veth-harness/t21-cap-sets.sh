@@ -59,6 +59,9 @@ classify() {
     if grep -q 'Failed to load dispatcher' "$out"; then
         echo "dispatcher load denied; first EPERM ${e:-none}"; return
     fi
+    if grep -q 'Compatibility check for dispatcher program failed' "$out"; then
+        echo "dispatcher compat check denied; first EPERM ${e:-none}"; return
+    fi
     if [ -n "$e" ]; then
         echo "first EPERM $e"
     else
@@ -100,6 +103,7 @@ run RAW               -all,+net_raw                             disp FAIL
 run RAW+BPF           -all,+net_raw,+bpf                        disp FAIL
 run RAW+NET_ADMIN     -all,+net_raw,+net_admin                  disp FAIL
 run RAW+NET_ADMIN+BPF -all,+net_raw,+net_admin,+bpf             disp FAIL
+run RAW+NET_ADMIN+BPF+PERFMON -all,+net_raw,+net_admin,+bpf,+perfmon disp FAIL
 run RAW+BPF+SYS_ADMIN -all,+net_raw,+bpf,+sys_admin             disp FAIL
 run RAW+NET_ADMIN+SYS_ADMIN -all,+net_raw,+net_admin,+sys_admin disp OK
 run RAW+NET_ADMIN+BPF+SYS_ADMIN -all,+net_raw,+net_admin,+bpf,+sys_admin disp OK
